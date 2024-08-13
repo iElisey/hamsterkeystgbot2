@@ -30,6 +30,7 @@ import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Timer;
 import java.util.TimerTask;
@@ -251,18 +252,19 @@ public class TelegramBot implements SpringLongPollingBot, LongPollingSingleThrea
         });
         LocalDateTime lastRequest = userSession.getLastRequest();
         if (lastRequest != null) {
-            ZonedDateTime lastRequestZone = lastRequest.atZone(ZoneId.of("Europe/Moscow"));
-            ZonedDateTime nextAvailableRequest = lastRequestZone.toLocalDate().plusDays(1).atStartOfDay(ZoneId.of("Europe/Moscow"));
-            if (ZonedDateTime.now().isBefore(nextAvailableRequest)) {
-                Duration duration = Duration.between(ZonedDateTime.now(), nextAvailableRequest);
-                long hours = duration.toHours();
-                long minutes = duration.toMinutes() % 60;
+            ZoneId zone = ZoneId.of("Europe/Moscow");
+            ZonedDateTime lastRequestZone = lastRequest.atZone(zone);
+            ZonedDateTime nextAvailableRequest = lastRequestZone.toLocalDate().plusDays(1).atStartOfDay(zone);
+            ZonedDateTime now = ZonedDateTime.now(zone);
+            if (now.isBefore(nextAvailableRequest)) {
+                long hoursUntilNextRequest = ChronoUnit.HOURS.between(now, nextAvailableRequest);
+                long minutesUntilNextRequest = ChronoUnit.MINUTES.between(now, nextAvailableRequest) % 60;
 
                 String remainingTime;
-                if (hours > 0) {
-                    remainingTime = String.format("%d hours %d minutes", hours, minutes);
+                if (hoursUntilNextRequest > 0) {
+                    remainingTime = String.format("%d hours %d minutes", hoursUntilNextRequest, minutesUntilNextRequest);
                 } else {
-                    remainingTime = String.format("%d minutes", minutes);
+                    remainingTime = String.format("%d minutes", minutesUntilNextRequest);
                 }
 
                 sendMessage(chatId, String.format("You have already received keys today.\nPlease try again in <b>%s</b>.", remainingTime));
