@@ -250,8 +250,8 @@ public class TelegramBot implements SpringLongPollingBot, LongPollingSingleThrea
         });
         LocalDateTime lastRequest = userSession.getLastRequest();
         if (lastRequest != null) {
-            LocalDateTime nextAvailableRequest = lastRequest.plusDays(1);
-            if (!nextAvailableRequest.isBefore(LocalDateTime.now())) {
+            LocalDateTime nextAvailableRequest = lastRequest.toLocalDate().plusDays(1).atStartOfDay();
+            if (LocalDateTime.now().isBefore(nextAvailableRequest)) {
                 Duration duration = Duration.between(LocalDateTime.now(), nextAvailableRequest);
                 long hours = duration.toHours();
                 long minutes = duration.toMinutes() % 60;
