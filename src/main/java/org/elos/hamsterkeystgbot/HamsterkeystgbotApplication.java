@@ -8,6 +8,7 @@ public class HamsterkeystgbotApplication {
 
 	public static void main(String[] args) {
 		SpringApplication.run(HamsterkeystgbotApplication.class, args);
+
 	}
 
 }

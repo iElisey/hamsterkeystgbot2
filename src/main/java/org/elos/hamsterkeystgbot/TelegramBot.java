@@ -8,22 +8,23 @@ import org.elos.hamsterkeystgbot.repository.UserReferralsRepository;
 import org.elos.hamsterkeystgbot.repository.UserSessionsRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.context.event.ContextRefreshedEvent;
-import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
-import org.telegram.telegrambots.bots.TelegramLongPollingBot;
-import org.telegram.telegrambots.meta.TelegramBotsApi;
+import org.telegram.telegrambots.client.okhttp.OkHttpTelegramClient;
+import org.telegram.telegrambots.longpolling.interfaces.LongPollingUpdateConsumer;
+import org.telegram.telegrambots.longpolling.starter.SpringLongPollingBot;
+import org.telegram.telegrambots.longpolling.util.LongPollingSingleThreadUpdateConsumer;
 import org.telegram.telegrambots.meta.api.methods.groupadministration.GetChatMember;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageText;
 import org.telegram.telegrambots.meta.api.objects.CallbackQuery;
-import org.telegram.telegrambots.meta.api.objects.Message;
 import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.api.objects.chatmember.ChatMember;
+import org.telegram.telegrambots.meta.api.objects.message.Message;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton;
+import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardRow;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
-import org.telegram.telegrambots.updatesreceivers.DefaultBotSession;
+import org.telegram.telegrambots.meta.generics.TelegramClient;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
@@ -33,10 +34,21 @@ import java.util.Timer;
 import java.util.TimerTask;
 
 @Component
-public class TelegramBot extends TelegramLongPollingBot {
+public class TelegramBot implements SpringLongPollingBot, LongPollingSingleThreadUpdateConsumer {
+
+
     private final UserSessionsRepository userSessionsRepository;
     private final KeysRepository keysRepository;
     private final UserReferralsRepository userReferralsRepository;
+
+    private final TelegramClient telegramClient = new OkHttpTelegramClient("7262202111:AAGGuvh6ltYnXkXU7PWHsQSp-AS_r9-Zn4E");
+
+
+    public TelegramBot(@Autowired UserSessionsRepository userSessionsRepository,@Autowired KeysRepository keysRepository, @Autowired UserReferralsRepository userReferralsRepository) {
+        this.userSessionsRepository = userSessionsRepository;
+        this.keysRepository = keysRepository;
+        this.userReferralsRepository = userReferralsRepository;
+    }
 
     @Value("${telegram.bot.token}")
     private String botToken;
@@ -48,35 +60,20 @@ public class TelegramBot extends TelegramLongPollingBot {
     private String channelId;
 
     @Override
-    public String getBotUsername() {
-        return botUsername;
-    }
-
-    @Override
     public String getBotToken() {
         return botToken;
     }
 
-    @EventListener({ContextRefreshedEvent.class})
-    public void init() throws TelegramApiException {
-        TelegramBotsApi telegramBotsApi = new TelegramBotsApi(DefaultBotSession.class);
-        try {
-            telegramBotsApi.registerBot(this);
-        } catch (TelegramApiException e) {
-            System.out.println("Error occurred: " + e.getMessage());
-        }
-    }
-
-
-    @Autowired
-    public TelegramBot(UserSessionsRepository userSessionsRepository, KeysRepository keysRepository, UserReferralsRepository userReferralsRepository) {
-        this.userSessionsRepository = userSessionsRepository;
-        this.keysRepository = keysRepository;
-        this.userReferralsRepository = userReferralsRepository;
-    }
 
     @Override
-    public void onUpdateReceived(Update update) {
+    public LongPollingUpdateConsumer getUpdatesConsumer() {
+        return this;
+    }
+
+
+
+    @Override
+    public void consume(Update update) {
         System.out.println("HI EVERYONE");
         if (update.hasMessage() && update.getMessage().hasText()) {
             String command = update.getMessage().getText();
@@ -108,16 +105,15 @@ public class TelegramBot extends TelegramLongPollingBot {
 
                 Integer messageId = callbackQuery.getMessage().getMessageId();
                 Long chatId = callbackQuery.getMessage().getChatId();
-                EditMessageText editMessageText = new EditMessageText();
+                EditMessageText editMessageText = new EditMessageText("⬇\uFE0F✅ You have successfully received keys for your invited friend <b>"+referralUsername+"</b>!");
                 editMessageText.setChatId(String.valueOf(chatId));
                 editMessageText.setMessageId(messageId);
                 editMessageText.setParseMode("HTML");
-                editMessageText.setText("⬇\uFE0F✅ You have successfully received keys for your invited friend <b>"+referralUsername+"</b>!");
 
                 try {
                     userSessionsRepository.save(referrer);
                     sendKeys(callbackQuery.getFrom().getId(), chatId);
-                    execute(editMessageText);
+                    telegramClient.execute(editMessageText);
                 } catch (TelegramApiException e) {
                     throw new RuntimeException(e);
                 }
@@ -167,27 +163,24 @@ public class TelegramBot extends TelegramLongPollingBot {
     }
 
     private void notify_referrer(Long referrerId, String referralName) {
-        SendMessage sendMessage = new SendMessage();
-        sendMessage.setChatId(String.valueOf(referrerId));
-        sendMessage.setText("\uD83C\uDF89 <b>You invited a friend: "+referralName+"</b>!\nClick the button below to get your keys.");
+        SendMessage sendMessage = new SendMessage(String.valueOf(referrerId), "\uD83C\uDF89 <b>You invited a friend: "+referralName+"</b>!\nClick the button below to get your keys.");
         sendMessage.setParseMode("HTML");
 
-        InlineKeyboardMarkup referralMarkup = new InlineKeyboardMarkup();
-
-        InlineKeyboardButton referralButton = new InlineKeyboardButton("\uD83D\uDD11 Get keys");
-        referralButton.setCallbackData("get_bonus_keys:"+referrerId+":"+referralName);
-
-        List<List<InlineKeyboardButton>> rowsInline = new ArrayList<>();
-        List<InlineKeyboardButton> rowInline = new ArrayList<>();
-        rowInline.add(referralButton);
-        rowsInline.add(rowInline);
-
-        referralMarkup.setKeyboard(rowsInline);
-
+        InlineKeyboardMarkup referralMarkup = InlineKeyboardMarkup
+                .builder()
+                .keyboardRow(
+                        new InlineKeyboardRow(InlineKeyboardButton
+                                .builder()
+                                .text("\uD83D\uDD11 Get keys")
+                                .callbackData("get_bonus_keys:"+referrerId+":"+referralName)
+                                .build()
+                        )
+                )
+                .build();
         sendMessage.setReplyMarkup(referralMarkup);
 
         try {
-            execute(sendMessage);
+            telegramClient.execute(sendMessage);
         } catch (TelegramApiException e) {
             throw new RuntimeException(e);
         }
@@ -195,26 +188,22 @@ public class TelegramBot extends TelegramLongPollingBot {
     }
     private void handleGetKeysCommand(Long userId, Long chatId) {
         if (!isUserSubscribed(userId)) {
-            SendMessage sendMessage = new SendMessage();
-            sendMessage.setChatId(String.valueOf(chatId));
             String text = "<b>❌You are not subscribed to our channel. Please subscribe to receive keys.</b>" +
                     "\nChannel link - https://t.me/KeysHamsterKombatChannel";
+            SendMessage sendMessage = new SendMessage(String.valueOf(chatId),text);
             sendMessage.setText(text);
             sendMessage.setParseMode("HTML");
 
-            InlineKeyboardMarkup linkMarkup = new InlineKeyboardMarkup();
-            InlineKeyboardButton linkButton = new InlineKeyboardButton("Go to channel");
-            linkButton.setUrl("https://t.me/KeysHamsterKombatChannel");
-
-            List<List<InlineKeyboardButton>> rowsInline = new ArrayList<>();
-            List<InlineKeyboardButton> rowInline = new ArrayList<>();
-            rowInline.add(linkButton);
-            rowsInline.add(rowInline);
-            linkMarkup.setKeyboard(rowsInline);
-
+            InlineKeyboardMarkup linkMarkup = InlineKeyboardMarkup.builder()
+                    .keyboardRow(new InlineKeyboardRow(InlineKeyboardButton
+                            .builder()
+                            .text("Go to channel")
+                            .url("https://t.me/KeysHamsterKombatChannel")
+                            .build()
+                    )).build();
             sendMessage.setReplyMarkup(linkMarkup);
             try {
-                execute(sendMessage);
+                telegramClient.execute(sendMessage);
             } catch (TelegramApiException e) {
                 throw new RuntimeException(e);
             }
@@ -237,7 +226,7 @@ public class TelegramBot extends TelegramLongPollingBot {
 
     private boolean isUserSubscribed(Long userId) {
         try {
-            ChatMember chatMember = execute(new GetChatMember(channelId, userId));
+            ChatMember chatMember = telegramClient.execute(new GetChatMember(channelId, userId));
             return chatMember.getStatus().equals("member") || chatMember.getStatus().equals("administrator") || chatMember.getStatus().equals("creator");
         } catch (Exception e) {
             return false;
@@ -328,16 +317,14 @@ public class TelegramBot extends TelegramLongPollingBot {
     }
 
     private void sendMessage(Long chatId, String text, String parseMode) {
-        SendMessage message = new SendMessage();
-        message.setChatId(String.valueOf(chatId));
+        SendMessage message = new SendMessage(String.valueOf(chatId),text);
         message.setText(text);
         message.setParseMode(parseMode);
         try {
-            execute(message);
+            telegramClient.execute(message);
         } catch (Exception e) {
             e.printStackTrace();
         }
     }
-
 
 }
