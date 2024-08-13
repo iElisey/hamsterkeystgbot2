@@ -28,6 +28,8 @@ import org.telegram.telegrambots.meta.generics.TelegramClient;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Timer;
@@ -250,9 +252,10 @@ public class TelegramBot implements SpringLongPollingBot, LongPollingSingleThrea
         });
         LocalDateTime lastRequest = userSession.getLastRequest();
         if (lastRequest != null) {
-            LocalDateTime nextAvailableRequest = lastRequest.toLocalDate().plusDays(1).atStartOfDay();
-            if (LocalDateTime.now().isBefore(nextAvailableRequest)) {
-                Duration duration = Duration.between(LocalDateTime.now(), nextAvailableRequest);
+            ZonedDateTime lastRequestZone = lastRequest.atZone(ZoneId.of("Europe/Moscow"));
+            ZonedDateTime nextAvailableRequest = lastRequestZone.toLocalDate().plusDays(1).atStartOfDay(ZoneId.of("Europe/Moscow"));
+            if (ZonedDateTime.now().isBefore(nextAvailableRequest)) {
+                Duration duration = Duration.between(ZonedDateTime.now(), nextAvailableRequest);
                 long hours = duration.toHours();
                 long minutes = duration.toMinutes() % 60;
 
