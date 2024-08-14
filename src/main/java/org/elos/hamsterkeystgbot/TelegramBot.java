@@ -380,6 +380,7 @@ public class TelegramBot implements SpringLongPollingBot, LongPollingSingleThrea
     }
 
     private boolean canUserGetKeys(Long userId, Long chatId) {
+        ZoneId zone = ZoneId.of("Europe/Moscow");
         // Check if keys are available
         if (!areKeysAvailable()) {
             sendMessage(chatId, "not.enough.keys");
@@ -391,12 +392,11 @@ public class TelegramBot implements SpringLongPollingBot, LongPollingSingleThrea
             UserSessions newUserSession = new UserSessions();
             newUserSession.setUserId(userId);
             newUserSession.setChatId(chatId);
-            newUserSession.setLastRequest(LocalDateTime.now());
+            newUserSession.setLastRequest(ZonedDateTime.now(zone).toLocalDateTime());
             return userSessionsRepository.save(newUserSession);
         });
         LocalDateTime lastRequest = userSession.getLastRequest();
         if (lastRequest != null) {
-            ZoneId zone = ZoneId.of("Europe/Moscow");
             ZonedDateTime lastRequestZone = lastRequest.atZone(zone);
             ZonedDateTime nextAvailableRequest = lastRequestZone.toLocalDate().plusDays(1).atStartOfDay(zone);
             ZonedDateTime now = ZonedDateTime.now(zone);
@@ -423,13 +423,13 @@ public class TelegramBot implements SpringLongPollingBot, LongPollingSingleThrea
                 sendMessage(chatId, "remaining.time", remainingTime);
                 return false;
             } else {
-                userSession.setLastRequest(LocalDateTime.now());
+                userSession.setLastRequest(ZonedDateTime.now(zone).toLocalDateTime());
                 userSessionsRepository.save(userSession);
             }
         }
 
         // Update last request time
-        userSession.setLastRequest(LocalDateTime.now());
+        userSession.setLastRequest(ZonedDateTime.now(zone).toLocalDateTime());
         userSessionsRepository.save(userSession);
         return true;
     }
