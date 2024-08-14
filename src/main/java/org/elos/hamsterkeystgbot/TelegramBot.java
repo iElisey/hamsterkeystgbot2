@@ -247,14 +247,14 @@ public class TelegramBot implements SpringLongPollingBot, LongPollingSingleThrea
             }
         } else if (data.startsWith("get_bonus_keys")) {
             Long referrerId = Long.valueOf(data.split(":")[1]);
-            String referralUsername = data.split(":")[2];
+            String referralName = data.split(":")[2];
             UserSessions referrer = userSessionsRepository.findByUserId(referrerId).orElseThrow();
             int bonusCount = referrer.getBonusCount();
             if (bonusCount < 1) {
-                sendMessage(referrer.getChatId(), "already.received.keys", "<b>" + referralUsername + "</b>!");
+                sendMessage(referrer.getChatId(), "already.received.keys", "<b>" + referralName + "</b>!");
             } else {
                 referrer.setBonusCount(bonusCount - 1);
-                EditMessageText editMessageText = new EditMessageText(getTextByLanguage(userId, "received.keys", "<b>" + referralUsername + "</b>!"));
+                EditMessageText editMessageText = new EditMessageText(getTextByLanguage(userId, "received.keys", "<b>" + referralName + "</b>!"));
                 editMessageText.setChatId(String.valueOf(chatId));
                 editMessageText.setMessageId(messageId);
                 editMessageText.setParseMode("HTML");
@@ -293,7 +293,7 @@ public class TelegramBot implements SpringLongPollingBot, LongPollingSingleThrea
                     userSessionsRepository.save(referrer);
                     notify_referrer(referrer.getChatId(), message.getFrom().getUserName() != null
                             ? message.getFrom().getUserName()
-                            : message.getFrom().getFirstName() + " " + message.getFrom().getLastName()); //notify referrer about new referral, second parameter mean if username of user is null, we put a first and last names of referral
+                            : message.getFrom().getFirstName() + (message.getFrom().getLastName() != null ? " "+message.getFrom().getLastName() : "")); //notify referrer about new referral, second parameter mean if username of user is null, we put a first and last names of referral
                 }
             }
 
