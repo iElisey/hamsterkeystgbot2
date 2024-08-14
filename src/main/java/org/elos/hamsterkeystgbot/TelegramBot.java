@@ -8,6 +8,8 @@ import org.elos.hamsterkeystgbot.repository.UserReferralsRepository;
 import org.elos.hamsterkeystgbot.repository.UserSessionsRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.MessageSource;
+import org.springframework.context.support.ReloadableResourceBundleMessageSource;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.client.okhttp.OkHttpTelegramClient;
 import org.telegram.telegrambots.longpolling.interfaces.LongPollingUpdateConsumer;
@@ -15,6 +17,7 @@ import org.telegram.telegrambots.longpolling.starter.SpringLongPollingBot;
 import org.telegram.telegrambots.longpolling.util.LongPollingSingleThreadUpdateConsumer;
 import org.telegram.telegrambots.meta.api.methods.groupadministration.GetChatMember;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
+import org.telegram.telegrambots.meta.api.methods.updatingmessages.DeleteMessage;
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageText;
 import org.telegram.telegrambots.meta.api.objects.CallbackQuery;
 import org.telegram.telegrambots.meta.api.objects.Update;
@@ -26,27 +29,28 @@ import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKe
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 import org.telegram.telegrambots.meta.generics.TelegramClient;
 
-import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
+import java.util.Locale;
 import java.util.Timer;
 import java.util.TimerTask;
 
 @Component
 public class TelegramBot implements SpringLongPollingBot, LongPollingSingleThreadUpdateConsumer {
 
-
+    private final MessageSource messageSource;
     private final UserSessionsRepository userSessionsRepository;
     private final KeysRepository keysRepository;
     private final UserReferralsRepository userReferralsRepository;
 
     private final TelegramClient telegramClient = new OkHttpTelegramClient("7262202111:AAGGuvh6ltYnXkXU7PWHsQSp-AS_r9-Zn4E");
 
-
-    public TelegramBot(@Autowired UserSessionsRepository userSessionsRepository,@Autowired KeysRepository keysRepository, @Autowired UserReferralsRepository userReferralsRepository) {
+    @Autowired
+    public TelegramBot(MessageSource messageSource, UserSessionsRepository userSessionsRepository, KeysRepository keysRepository, UserReferralsRepository userReferralsRepository) {
+        this.messageSource = messageSource;
         this.userSessionsRepository = userSessionsRepository;
         this.keysRepository = keysRepository;
         this.userReferralsRepository = userReferralsRepository;
@@ -73,7 +77,6 @@ public class TelegramBot implements SpringLongPollingBot, LongPollingSingleThrea
     }
 
 
-
     @Override
     public void consume(Update update) {
         System.out.println("HI EVERYONE");
@@ -82,32 +85,176 @@ public class TelegramBot implements SpringLongPollingBot, LongPollingSingleThrea
             Long userId = update.getMessage().getFrom().getId();
             Long chatId = update.getMessage().getChatId();
 
+            if (userSessionsRepository.existsByUserId(userId)) {
+                if (userSessionsRepository.findByUserId(userId).get().getLanguage() == null || userSessionsRepository.findByUserId(userId).get().getLanguage().isEmpty()) {
+                    promptLanguageSelection(chatId);
+                    return;
+                }
+            }
+
             if (command.startsWith("/start")) {
                 handleStartCommand(update);
             } else if (command.startsWith("/get_keys")) {
                 handleGetKeysCommand(userId, chatId);
+            } else if (command.startsWith("/change_language")) {
+                if (userSessionsRepository.existsByUserId(userId)) {
+                    handleChangeLanguageCommand(userId, chatId);
+                } else {
+                    handleStartCommand(update);
+                }
             }
         } else if (update.hasCallbackQuery()) {
             handleCallbackQuery(update.getCallbackQuery());
         }
     }
 
+    private void handleChangeLanguageCommand(Long userId, Long chatId) {
+        selectNewLanguage(userId, chatId);
+    }
+
+    private void selectNewLanguage(Long userId, Long chatId) {
+        String text;
+        if (userSessionsRepository.findByUserId(userId).orElseThrow().getLanguage().equals("ru")) {
+            text = "Пожалуйста, выберите новый язык";
+        } else if (userSessionsRepository.findByUserId(userId).orElseThrow().getLanguage().equals("en")) {
+            text = "Please, select new language";
+        } else {
+            text = "Please, select new language";
+        }
+
+        SendMessage sendMessage = new SendMessage(String.valueOf(chatId), text);
+
+        InlineKeyboardMarkup markup = InlineKeyboardMarkup.builder()
+                .keyboardRow(new InlineKeyboardRow(
+                                InlineKeyboardButton.builder()
+                                        .text("English")
+                                        .callbackData("new_lang_en").build(),
+                                InlineKeyboardButton.builder()
+                                        .text("Русский")
+                                        .callbackData("new_lang_ru").build()
+                        )
+                ).build();
+        sendMessage.setReplyMarkup(markup);
+
+        try {
+            telegramClient.execute(sendMessage);
+        } catch (TelegramApiException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    private void promptLanguageSelection(Long chatId) {
+        String text = "Пожалуйста, выберите язык / Please select your language";
+        SendMessage sendMessage = new SendMessage(String.valueOf(chatId), text);
+
+        InlineKeyboardMarkup markup = InlineKeyboardMarkup.builder()
+                .keyboardRow(new InlineKeyboardRow(
+                                InlineKeyboardButton.builder()
+                                        .text("English")
+                                        .callbackData("lang_en").build(),
+                                InlineKeyboardButton.builder()
+                                        .text("Русский")
+                                        .callbackData("lang_ru").build()
+                        )
+                ).build();
+        sendMessage.setReplyMarkup(markup);
+
+        try {
+            telegramClient.execute(sendMessage);
+        } catch (TelegramApiException e) {
+            e.printStackTrace();
+        }
+    }
+
     private void handleCallbackQuery(CallbackQuery callbackQuery) {
         String data = callbackQuery.getData();
-        if(data.startsWith("get_bonus_keys")) {
+        Long userId = callbackQuery.getFrom().getId();
+        Long chatId = callbackQuery.getMessage().getChatId();
+        Integer messageId = callbackQuery.getMessage().getMessageId();
+        if (data.startsWith("new_lang_")) {
+            String selectedLanguage = data.split("_")[2];
+            UserSessions userSession = userSessionsRepository.findByUserId(userId).orElseGet(() -> {
+                UserSessions userSessions = new UserSessions();
+                userSessions.setUserId(userId);
+                userSessions.setChatId(chatId);
+                return userSessions;
+            });
+
+            if (userSession.getLanguage().equals(selectedLanguage)) {
+                Message message = sendMessage(chatId, "already.selected.language");
+                Timer timer = new Timer();
+                timer.schedule(new TimerTask() {
+                    @Override
+                    public void run() {
+                        DeleteMessage deleteMessage = DeleteMessage.builder()
+                                .messageId(message.getMessageId()).chatId(message.getChatId()).build();
+                        try {
+                            telegramClient.execute(deleteMessage);
+                        } catch (TelegramApiException e) {
+                            throw new RuntimeException(e);
+                        }
+                    }
+                }, 10000);
+                return;
+            }
+
+            userSession.setLanguage(selectedLanguage);
+            userSessionsRepository.save(userSession);
+
+            String editText = "";
+            if (selectedLanguage.equals("ru")) {
+                editText = "<b>Язык \uD83C\uDDF7\uD83C\uDDFA RU выбран!</b>";
+            } else if (selectedLanguage.equals("en")) {
+                editText = "<b>Language \uD83C\uDDEC\uD83C\uDDE7 EN selected!</b>";
+            }
+
+            EditMessageText editMessageText = new EditMessageText(editText);
+            editMessageText.setChatId(chatId);
+            editMessageText.setMessageId(messageId);
+            editMessageText.setParseMode("HTML");
+
+            try {
+                telegramClient.execute(editMessageText);
+            } catch (TelegramApiException e) {
+                throw new RuntimeException(e);
+            }
+        } else if (data.startsWith("lang_")) {
+            String selectedLanguage = data.split("_")[1];
+            UserSessions userSession = userSessionsRepository.findByUserId(userId).orElseGet(() -> {
+                UserSessions userSessions = new UserSessions();
+                userSessions.setUserId(userId);
+                userSessions.setChatId(chatId);
+                return userSessions;
+            });
+            userSession.setLanguage(selectedLanguage);
+            userSessionsRepository.save(userSession);
+            String text = "";
+            EditMessageText editMessageText = new EditMessageText(text);
+            editMessageText.setChatId(chatId);
+            if (selectedLanguage.equals("ru")) {
+                text = String.format("<b>Язык \uD83C\uDDF7\uD83C\uDDFA%s выбран.</b> Теперь вы можете использовать бота.\n/get_keys - чтобы получить ключи в Хамстер Комбат", selectedLanguage);
+            } else if (selectedLanguage.equals("en")) {
+                text = String.format("<b>Language \uD83C\uDDEC\uD83C\uDDE7%s selected.</b> Now you can use the bot.\n/get_keys - to get keys for Hamster Kombat", selectedLanguage);
+            }
+            editMessageText.setText(text);
+            editMessageText.setMessageId(messageId);
+            editMessageText.setParseMode("HTML");
+            try {
+                telegramClient.execute(editMessageText);
+                welcomeMessage(chatId);
+            } catch (TelegramApiException e) {
+                throw new RuntimeException(e);
+            }
+        } else if (data.startsWith("get_bonus_keys")) {
             Long referrerId = Long.valueOf(data.split(":")[1]);
             String referralUsername = data.split(":")[2];
             UserSessions referrer = userSessionsRepository.findByUserId(referrerId).orElseThrow();
             int bonusCount = referrer.getBonusCount();
             if (bonusCount < 1) {
-                sendMessage(referrer.getChatId(), "⚠\uFE0F You have already received the keys for the invited friend <b>" + referralUsername + "</b>!");
-                return;
+                sendMessage(referrer.getChatId(), "already.received.keys", "<b>" + referralUsername + "</b>!");
             } else {
                 referrer.setBonusCount(bonusCount - 1);
-
-                Integer messageId = callbackQuery.getMessage().getMessageId();
-                Long chatId = callbackQuery.getMessage().getChatId();
-                EditMessageText editMessageText = new EditMessageText("⬇\uFE0F✅ You have successfully received keys for your invited friend <b>"+referralUsername+"</b>!");
+                EditMessageText editMessageText = new EditMessageText(getTextByLanguage(userId, "received.keys", "<b>" + referralUsername + "</b>!"));
                 editMessageText.setChatId(String.valueOf(chatId));
                 editMessageText.setMessageId(messageId);
                 editMessageText.setParseMode("HTML");
@@ -129,43 +276,43 @@ public class TelegramBot implements SpringLongPollingBot, LongPollingSingleThrea
         System.out.println(userId);
         String[] args = message.getText().split(" ");
         if (userSessionsRepository.existsByUserId(userId)) {
-            sendMessage(message.getChatId(), "<b>You are already registered.</b>");
+            sendMessage(message.getChatId(), "already.registered");
         } else {
-            userSessionsRepository.findByUserId(userId).orElseGet(() -> {
+            //Referral system
+            if (args.length > 1) {
+                Long referrerId = Long.parseLong(args[1]);
+                if (!referrerId.equals(userId)) {
+                    // Handle referral logic
+                    UserReferrals userReferrals = new UserReferrals();
+                    userReferrals.setUserId(userId);
+                    userReferrals.setReferrerId(referrerId);
+                    userReferralsRepository.save(userReferrals);
 
-                if (args.length > 1) {
-                    Long referrerId = Long.parseLong(args[1]);
-                    if (!referrerId.equals(userId)) {
-                        // Handle referral logic
-                        UserReferrals userReferrals = new UserReferrals();
-                        userReferrals.setUserId(userId);
-                        userReferrals.setReferrerId(referrerId);
-                        userReferralsRepository.save(userReferrals);
-
-                        UserSessions referrer = userSessionsRepository.findByUserId(referrerId).orElseThrow();
-                        referrer.setBonusCount(referrer.getBonusCount() + 1);
-                        userSessionsRepository.save(referrer);
-                        notify_referrer(referrer.getChatId(), message.getFrom().getUserName() != null
-                                ? message.getFrom().getUserName()
-                                : message.getFrom().getFirstName() + " " + message.getFrom().getLastName()); //notify referrer about new referral, second parameter mean if username of user is null, we put a first and last names of referral
-                    }
+                    UserSessions referrer = userSessionsRepository.findByUserId(referrerId).orElseThrow();
+                    referrer.setBonusCount(referrer.getBonusCount() + 1);
+                    userSessionsRepository.save(referrer);
+                    notify_referrer(referrer.getChatId(), message.getFrom().getUserName() != null
+                            ? message.getFrom().getUserName()
+                            : message.getFrom().getFirstName() + " " + message.getFrom().getLastName()); //notify referrer about new referral, second parameter mean if username of user is null, we put a first and last names of referral
                 }
+            }
 
-                // Register new user
-                UserSessions userSession = new UserSessions();
-                userSession.setUserId(userId);
-                userSession.setChatId(message.getChatId());
-                return userSessionsRepository.save(userSession);
-
-            });
-            sendMessage(message.getChatId(), "<b>Hello \uD83D\uDC4B \nI can send you keys for game Hamster Kombat \uD83D\uDC39</b>\nSend a command /get_keys to check it");
+            // Register new user
+            UserSessions userSession = new UserSessions();
+            userSession.setUserId(userId);
+            userSession.setChatId(message.getChatId());
+            userSessionsRepository.save(userSession);
+            promptLanguageSelection(message.getChatId());
         }
-
-
     }
 
+    private void welcomeMessage(Long chatId) {
+        sendMessage(chatId, "welcome.message");
+    }
+
+
     private void notify_referrer(Long referrerId, String referralName) {
-        SendMessage sendMessage = new SendMessage(String.valueOf(referrerId), "\uD83C\uDF89 <b>You invited a friend: "+referralName+"</b>!\nClick the button below to get your keys.");
+        SendMessage sendMessage = new SendMessage(String.valueOf(referrerId), getTextByLanguage(referrerId, "invited.friend", referralName));
         sendMessage.setParseMode("HTML");
 
         InlineKeyboardMarkup referralMarkup = InlineKeyboardMarkup
@@ -173,8 +320,8 @@ public class TelegramBot implements SpringLongPollingBot, LongPollingSingleThrea
                 .keyboardRow(
                         new InlineKeyboardRow(InlineKeyboardButton
                                 .builder()
-                                .text("\uD83D\uDD11 Get keys")
-                                .callbackData("get_bonus_keys:"+referrerId+":"+referralName)
+                                .text(getTextByLanguage(referrerId, "get.bonus.keys"))
+                                .callbackData("get_bonus_keys:" + referrerId + ":" + referralName)
                                 .build()
                         )
                 )
@@ -188,18 +335,18 @@ public class TelegramBot implements SpringLongPollingBot, LongPollingSingleThrea
         }
 
     }
+
     private void handleGetKeysCommand(Long userId, Long chatId) {
         if (!isUserSubscribed(userId)) {
-            String text = "<b>❌You are not subscribed to our channel. Please subscribe to receive keys.</b>" +
-                    "\nChannel link - https://t.me/KeysHamsterKombatChannel";
-            SendMessage sendMessage = new SendMessage(String.valueOf(chatId),text);
+            String text = getTextByLanguage(userId, "not.subscribed");
+            SendMessage sendMessage = new SendMessage(String.valueOf(chatId), text);
             sendMessage.setText(text);
             sendMessage.setParseMode("HTML");
 
             InlineKeyboardMarkup linkMarkup = InlineKeyboardMarkup.builder()
                     .keyboardRow(new InlineKeyboardRow(InlineKeyboardButton
                             .builder()
-                            .text("Go to channel")
+                            .text(getTextByLanguage(userId, "go.to.channel"))
                             .url("https://t.me/KeysHamsterKombatChannel")
                             .build()
                     )).build();
@@ -238,7 +385,7 @@ public class TelegramBot implements SpringLongPollingBot, LongPollingSingleThrea
     private boolean canUserGetKeys(Long userId, Long chatId) {
         // Check if keys are available
         if (!areKeysAvailable()) {
-            sendMessage(chatId, "<b>Not enough keys available. Try again later.</b>");
+            sendMessage(chatId, "not.enough.keys");
             return false;
         }
 
@@ -261,13 +408,22 @@ public class TelegramBot implements SpringLongPollingBot, LongPollingSingleThrea
                 long minutesUntilNextRequest = ChronoUnit.MINUTES.between(now, nextAvailableRequest) % 60;
 
                 String remainingTime;
+                String strhours = "";
+                String strmins = "";
+                if (userSession.getLanguage().equals("ru")) {
+                    strhours = "часов";
+                    strmins = "минут";
+                } else if (userSession.getLanguage().equals("en")) {
+                    strhours = "hours";
+                    strmins = "minutes";
+                }
                 if (hoursUntilNextRequest > 0) {
-                    remainingTime = String.format("%d hours %d minutes", hoursUntilNextRequest, minutesUntilNextRequest);
+                    remainingTime = String.format("%d %s %d %s", hoursUntilNextRequest, strhours, minutesUntilNextRequest, strmins);
                 } else {
-                    remainingTime = String.format("%d minutes", minutesUntilNextRequest);
+                    remainingTime = String.format("%d minutes", minutesUntilNextRequest, strmins);
                 }
 
-                sendMessage(chatId, String.format("You have already received keys today.\nPlease try again in <b>%s</b>.", remainingTime));
+                sendMessage(chatId, "remaining.time", remainingTime);
                 return false;
             } else {
                 userSession.setLastRequest(LocalDateTime.now());
@@ -294,11 +450,11 @@ public class TelegramBot implements SpringLongPollingBot, LongPollingSingleThrea
 
     private void sendKeys(Long userId, Long chatId) {
         String[] prefixes = {"BIKE", "CUBE", "TRAIN", "CLONE"};
-        StringBuilder keyBatch = new StringBuilder("<b>🔑 Your keys:</b>\n\n");
+        StringBuilder keyBatch = new StringBuilder(getTextByLanguage(userId, "your.keys"));
         for (String prefix : prefixes) {
             List<Keys> keys = keysRepository.findTop4ByPrefix(prefix);
             if (keys.size() < 4) {
-                sendMessage(chatId, "Not enough keys for prefix <b>" + prefix + "</b>.");
+                sendMessage(chatId, "not.enough.keys.prefix", "<b>" + prefix + "</b>.");
                 return;
             }
             for (Keys key : keys) {
@@ -307,28 +463,40 @@ public class TelegramBot implements SpringLongPollingBot, LongPollingSingleThrea
             keyBatch.append("\n");
             keysRepository.deleteAll(keys);
         }
-        sendMessage(chatId, keyBatch.toString(), "HTML");
+        SendMessage sendMessage = new SendMessage(String.valueOf(chatId), keyBatch.toString());
+        sendMessage.setParseMode("HTML");
+        try {
+            telegramClient.execute(sendMessage);
+        } catch (TelegramApiException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     private void sendReferralLink(Long userId, Long chatId) {
         String referralLink = "https://t.me/hamster_komb_keys_bot?start=" + userId;
-        String messageText = "<b>🔑Invite your friends and get additional keys!</b>\n\nYour referral link:\n" + referralLink;
-        sendMessage(chatId, messageText, "HTML");
+        sendMessage(chatId, "referral.link", referralLink);
     }
 
-    private void sendMessage(Long chatId, String text) {
-        sendMessage(chatId, text, "HTML");
+    private String getTextByLanguage(Long userId, String messageKey, Object... args) {
+        String language = userSessionsRepository.findByUserId(userId).orElseThrow().getLanguage();
+        Locale locale = new Locale(language);
+        String text = messageSource.getMessage(messageKey, args, locale);
+        return text;
     }
 
-    private void sendMessage(Long chatId, String text, String parseMode) {
-        SendMessage message = new SendMessage(String.valueOf(chatId),text);
+    private Message sendMessage(Long chatId, String messageKey, Object... args) {
+        String languageCode = userSessionsRepository.findByUserId(chatId).orElseThrow().getLanguage();
+        Locale locale = new Locale(languageCode);
+        String text = messageSource.getMessage(messageKey, args, locale);
+        SendMessage message = new SendMessage(String.valueOf(chatId), text);
         message.setText(text);
-        message.setParseMode(parseMode);
+        message.setParseMode("HTML");
         try {
-            telegramClient.execute(message);
-        } catch (Exception e) {
-            e.printStackTrace();
+            return telegramClient.execute(message);
+        } catch (TelegramApiException e) {
+            throw new RuntimeException(e);
         }
+
     }
 
 }
