@@ -9,7 +9,6 @@ import org.elos.hamsterkeystgbot.repository.UserSessionsRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.MessageSource;
-import org.springframework.context.support.ReloadableResourceBundleMessageSource;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.client.okhttp.OkHttpTelegramClient;
 import org.telegram.telegrambots.longpolling.interfaces.LongPollingUpdateConsumer;
@@ -59,9 +58,6 @@ public class TelegramBot implements SpringLongPollingBot, LongPollingSingleThrea
     @Value("${telegram.bot.token}")
     private String botToken;
 
-    @Value("${telegram.bot.username}")
-    private String botUsername;
-
     @Value("${telegram.channel.id}")
     private String channelId;
 
@@ -85,8 +81,9 @@ public class TelegramBot implements SpringLongPollingBot, LongPollingSingleThrea
             Long userId = update.getMessage().getFrom().getId();
             Long chatId = update.getMessage().getChatId();
 
-            if (userSessionsRepository.existsByUserId(userId)) {
-                if (userSessionsRepository.findByUserId(userId).get().getLanguage() == null || userSessionsRepository.findByUserId(userId).get().getLanguage().isEmpty()) {
+            if (userSessionsRepository.findByUserId(userId).isPresent()) {
+                String language = userSessionsRepository.findByUserId(userId).get().getLanguage();
+                if (language == null || language.isEmpty()) {
                     promptLanguageSelection(chatId);
                     return;
                 }
@@ -162,7 +159,7 @@ public class TelegramBot implements SpringLongPollingBot, LongPollingSingleThrea
         try {
             telegramClient.execute(sendMessage);
         } catch (TelegramApiException e) {
-            e.printStackTrace();
+            System.out.println(e.getMessage());
         }
     }
 
@@ -420,7 +417,7 @@ public class TelegramBot implements SpringLongPollingBot, LongPollingSingleThrea
                 if (hoursUntilNextRequest > 0) {
                     remainingTime = String.format("%d %s %d %s", hoursUntilNextRequest, strhours, minutesUntilNextRequest, strmins);
                 } else {
-                    remainingTime = String.format("%d minutes", minutesUntilNextRequest, strmins);
+                    remainingTime = String.format("%d %s", minutesUntilNextRequest, strmins);
                 }
 
                 sendMessage(chatId, "remaining.time", remainingTime);
@@ -480,8 +477,7 @@ public class TelegramBot implements SpringLongPollingBot, LongPollingSingleThrea
     private String getTextByLanguage(Long userId, String messageKey, Object... args) {
         String language = userSessionsRepository.findByUserId(userId).orElseThrow().getLanguage();
         Locale locale = new Locale(language);
-        String text = messageSource.getMessage(messageKey, args, locale);
-        return text;
+        return messageSource.getMessage(messageKey, args, locale);
     }
 
     private Message sendMessage(Long chatId, String messageKey, Object... args) {
