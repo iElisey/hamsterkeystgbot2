@@ -423,7 +423,7 @@ public class TelegramBot implements SpringLongPollingBot, LongPollingSingleThrea
                 sendMessage(chatId, "remaining.time", remainingTime);
                 return false;
             } else {
-                userSession.setLastRequest(LocalDateTime.now());
+                userSession.setLastRequest(ZonedDateTime.now(zone).toLocalDateTime());
                 userSessionsRepository.save(userSession);
             }
         }
