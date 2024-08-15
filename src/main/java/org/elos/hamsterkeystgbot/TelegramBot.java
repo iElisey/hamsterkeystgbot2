@@ -466,7 +466,7 @@ public class TelegramBot implements SpringLongPollingBot, LongPollingSingleThrea
     }
 
     private boolean areKeysAvailable() {
-        String[] prefixes = {"BIKE", "CUBE", "TRAIN", "CLONE"};
+        String[] prefixes = {"BIKE", "CUBE", "TRAIN", "CLONE", "MERGE"};
         for (String prefix : prefixes) {
             long count = keysRepository.countByPrefix(prefix);
             if (count < 4) {
