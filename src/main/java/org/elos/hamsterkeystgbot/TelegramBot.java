@@ -100,7 +100,7 @@ public class TelegramBot implements SpringLongPollingBot, LongPollingSingleThrea
                     handleStartCommand(update);
                 }
             } else if (command.startsWith("/broadcast")) {
-                if (userId == 975340794) {
+                if (userSessionsRepository.findByUserId(userId).orElseThrow().getUserId().equals(975340794L)) {
                     handleBroadcastMessage();
                 }
             }
