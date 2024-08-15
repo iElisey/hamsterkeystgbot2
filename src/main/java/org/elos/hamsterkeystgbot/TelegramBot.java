@@ -351,7 +351,6 @@ public class TelegramBot implements SpringLongPollingBot, LongPollingSingleThrea
     }
 
     private void welcomeMessage(Long chatId) {
-        sendMessage(chatId, "welcome.message");
         SendMessage sendMessage = new SendMessage(String.valueOf(chatId), getTextByLanguage(chatId, "welcome.message"));
         sendMessage.setParseMode("HTML");
         sendMessage.setReplyMarkup(InlineKeyboardMarkup.builder()
@@ -361,6 +360,11 @@ public class TelegramBot implements SpringLongPollingBot, LongPollingSingleThrea
                                         .callbackData("get.keys").build()
                         )
                 ).build());
+        try {
+            telegramClient.execute(sendMessage);
+        } catch (TelegramApiException e) {
+            throw new RuntimeException(e);
+        }
     }
 
 
