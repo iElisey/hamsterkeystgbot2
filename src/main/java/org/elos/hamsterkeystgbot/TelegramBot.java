@@ -40,6 +40,7 @@ import java.util.TimerTask;
 @Component
 public class TelegramBot implements SpringLongPollingBot, LongPollingSingleThreadUpdateConsumer {
 
+    public static final String referralURL = "https://t.me/hamster_komb_keys_bot?start=";
     private final MessageSource messageSource;
     private final UserSessionsRepository userSessionsRepository;
     private final KeysRepository keysRepository;
@@ -88,9 +89,7 @@ public class TelegramBot implements SpringLongPollingBot, LongPollingSingleThrea
                     return;
                 }
             }
-            if (command.equalsIgnoreCase("/castelso")) {
-                handleBroadcastMessage(userId);
-            }
+            long adminId = 975340794;
             if (command.startsWith("/start")) {
                 handleStartCommand(update);
             } else if (command.startsWith("/get_keys")) {
@@ -101,11 +100,24 @@ public class TelegramBot implements SpringLongPollingBot, LongPollingSingleThrea
                 } else {
                     handleStartCommand(update);
                 }
+            } else if (command.startsWith("/referrals")) {
+                if (userSessionsRepository.existsByUserId(userId)) {
+                    handleReferrals(userId, chatId);
+                } else {
+                    handleStartCommand(update);
+                }
+            } else if (command.startsWith("/broadcast") && userId == adminId) {
+                handleBroadcastMessage(userId);
             }
 
         } else if (update.hasCallbackQuery()) {
             handleCallbackQuery(update.getCallbackQuery());
         }
+    }
+
+    private void handleReferrals(Long userId, Long chatId) {
+        int invitedFriends = userReferralsRepository.findByReferrerId(userId).size();
+        sendMessage(chatId, "referral", invitedFriends, referralURL + userId);
     }
 
     private void handleBroadcastMessage(Long userId) {
@@ -123,7 +135,8 @@ public class TelegramBot implements SpringLongPollingBot, LongPollingSingleThrea
                     ).build());
             try {
                 telegramClient.execute(sendMessage);
-            } catch (TelegramApiException e) {
+                Thread.sleep(1500);
+            } catch (TelegramApiException | InterruptedException e) {
                 throw new RuntimeException(e);
             }
 
@@ -513,7 +526,7 @@ public class TelegramBot implements SpringLongPollingBot, LongPollingSingleThrea
     }
 
     private void sendReferralLink(Long userId, Long chatId) {
-        String referralLink = "https://t.me/hamster_komb_keys_bot?start=" + userId;
+        String referralLink = referralURL + userId;
         sendMessage(chatId, "referral.link", referralLink);
     }
 
