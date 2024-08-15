@@ -122,6 +122,12 @@ public class TelegramBot implements SpringLongPollingBot, LongPollingSingleThrea
                                             .callbackData("get.keys").build()
                             )
                     ).build());
+            try {
+                telegramClient.execute(sendMessage);
+            } catch (TelegramApiException e) {
+                throw new RuntimeException(e);
+            }
+
         }
     }
 
