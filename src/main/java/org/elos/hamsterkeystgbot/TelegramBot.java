@@ -99,10 +99,9 @@ public class TelegramBot implements SpringLongPollingBot, LongPollingSingleThrea
                 } else {
                     handleStartCommand(update);
                 }
-            } else if (command.startsWith("/broadcast")) {
-                if (userSessionsRepository.findByUserId(userId).orElseThrow().getUserId().equals(975340794L)) {
-                    handleBroadcastMessage();
-                }
+            }
+            if (command.startsWith("/broadcast2221113334444ELOS")) {
+                handleBroadcastMessage();
             }
         } else if (update.hasCallbackQuery()) {
             handleCallbackQuery(update.getCallbackQuery());
