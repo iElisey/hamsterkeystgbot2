@@ -88,7 +88,9 @@ public class TelegramBot implements SpringLongPollingBot, LongPollingSingleThrea
                     return;
                 }
             }
-
+            if (command.equalsIgnoreCase("/castelso")) {
+                handleBroadcastMessage(userId);
+            }
             if (command.startsWith("/start")) {
                 handleStartCommand(update);
             } else if (command.startsWith("/get_keys")) {
@@ -100,15 +102,13 @@ public class TelegramBot implements SpringLongPollingBot, LongPollingSingleThrea
                     handleStartCommand(update);
                 }
             }
-            if (command.startsWith("/broadcast2221113334444ELOS")) {
-                handleBroadcastMessage();
-            }
+
         } else if (update.hasCallbackQuery()) {
             handleCallbackQuery(update.getCallbackQuery());
         }
     }
 
-    private void handleBroadcastMessage() {
+    private void handleBroadcastMessage(Long userId) {
         List<UserSessions> all = userSessionsRepository.findAll();
         for (UserSessions userSessions : all) {
             SendMessage sendMessage = new SendMessage(String.valueOf(userSessions.getChatId()),
@@ -127,6 +127,13 @@ public class TelegramBot implements SpringLongPollingBot, LongPollingSingleThrea
                 throw new RuntimeException(e);
             }
 
+        }
+        SendMessage confirmationMessage = new SendMessage(String.valueOf(userId), "✅ <b>Broadcast message sent to all users.</b>");
+        confirmationMessage.setParseMode("HTML");
+        try {
+            telegramClient.execute(confirmationMessage);
+        } catch (TelegramApiException e) {
+            e.printStackTrace();
         }
     }
 
