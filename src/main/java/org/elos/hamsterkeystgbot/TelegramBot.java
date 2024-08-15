@@ -99,9 +99,29 @@ public class TelegramBot implements SpringLongPollingBot, LongPollingSingleThrea
                 } else {
                     handleStartCommand(update);
                 }
+            } else if (command.startsWith("/broadcast")) {
+                if (userId == 975340794) {
+                    handleBroadcastMessage();
+                }
             }
         } else if (update.hasCallbackQuery()) {
             handleCallbackQuery(update.getCallbackQuery());
+        }
+    }
+
+    private void handleBroadcastMessage() {
+        List<UserSessions> all = userSessionsRepository.findAll();
+        for (UserSessions userSessions : all) {
+            SendMessage sendMessage = new SendMessage(String.valueOf(userSessions.getChatId()),
+                    getTextByLanguage(userSessions.getUserId(), "broadcast.message"));
+            sendMessage.setParseMode("HTML");
+            sendMessage.setReplyMarkup(InlineKeyboardMarkup.builder()
+                    .keyboardRow(new InlineKeyboardRow(
+                                    InlineKeyboardButton.builder()
+                                            .text(getTextByLanguage(userSessions.getUserId(), "get.bonus.keys"))
+                                            .callbackData("get.keys").build()
+                            )
+                    ).build());
         }
     }
 
@@ -168,7 +188,9 @@ public class TelegramBot implements SpringLongPollingBot, LongPollingSingleThrea
         Long userId = callbackQuery.getFrom().getId();
         Long chatId = callbackQuery.getMessage().getChatId();
         Integer messageId = callbackQuery.getMessage().getMessageId();
-        if (data.startsWith("new_lang_")) {
+        if (data.startsWith("get.keys")) {
+            handleGetKeysCommand(userId, chatId);
+        } else if (data.startsWith("new_lang_")) {
             String selectedLanguage = data.split("_")[2];
             UserSessions userSession = userSessionsRepository.findByUserId(userId).orElseGet(() -> {
                 UserSessions userSessions = new UserSessions();
@@ -290,7 +312,7 @@ public class TelegramBot implements SpringLongPollingBot, LongPollingSingleThrea
                     userSessionsRepository.save(referrer);
                     notify_referrer(referrer.getChatId(), message.getFrom().getUserName() != null
                             ? message.getFrom().getUserName()
-                            : message.getFrom().getFirstName() + (message.getFrom().getLastName() != null ? " "+message.getFrom().getLastName() : "")); //notify referrer about new referral, second parameter mean if username of user is null, we put a first and last names of referral
+                            : message.getFrom().getFirstName() + (message.getFrom().getLastName() != null ? " " + message.getFrom().getLastName() : "")); //notify referrer about new referral, second parameter mean if username of user is null, we put a first and last names of referral
                 }
             }
 
@@ -305,6 +327,15 @@ public class TelegramBot implements SpringLongPollingBot, LongPollingSingleThrea
 
     private void welcomeMessage(Long chatId) {
         sendMessage(chatId, "welcome.message");
+        SendMessage sendMessage = new SendMessage(String.valueOf(chatId), getTextByLanguage(chatId, "welcome.message"));
+        sendMessage.setParseMode("HTML");
+        sendMessage.setReplyMarkup(InlineKeyboardMarkup.builder()
+                .keyboardRow(new InlineKeyboardRow(
+                                InlineKeyboardButton.builder()
+                                        .text(getTextByLanguage(chatId, "get.bonus.keys"))
+                                        .callbackData("get.keys").build()
+                        )
+                ).build());
     }
 
 
@@ -446,7 +477,7 @@ public class TelegramBot implements SpringLongPollingBot, LongPollingSingleThrea
     }
 
     private void sendKeys(Long userId, Long chatId) {
-        String[] prefixes = {"BIKE", "CUBE", "TRAIN", "CLONE"};
+        String[] prefixes = {"BIKE", "CUBE", "TRAIN", "CLONE", "MERGE"};
         StringBuilder keyBatch = new StringBuilder(getTextByLanguage(userId, "your.keys"));
         for (String prefix : prefixes) {
             List<Keys> keys = keysRepository.findTop4ByPrefix(prefix);
