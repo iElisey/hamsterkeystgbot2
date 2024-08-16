@@ -135,8 +135,19 @@ public class TelegramBot implements SpringLongPollingBot, LongPollingSingleThrea
                     ).build());
             try {
                 telegramClient.execute(sendMessage);
+                System.out.println("Success! " + userSessions.getChatId());
+                Thread.sleep(500);
             } catch (TelegramApiException e) {
-                throw new RuntimeException(e);
+                // Если бот заблокирован пользователем, логируем и продолжаем выполнение цикла
+                if (e.getMessage().contains("bot was blocked by the user")) {
+                    System.out.println("Пользователь заблокировал бота: " + userSessions.getChatId());
+                    continue;
+                } else {
+                    throw new RuntimeException(e);
+                }
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                throw new RuntimeException("Ошибка при ожидании отправки сообщения", e);
             }
 
         }
@@ -422,7 +433,7 @@ public class TelegramBot implements SpringLongPollingBot, LongPollingSingleThrea
                 sendKeysByPrefix(userId, chatId, "TWERK");
                 userSession.setReceivedNewKeys(true);
                 userSessionsRepository.save(userSession);
-            } else  {
+            } else {
                 ZoneId zone = ZoneId.of("Europe/Moscow");
                 ZonedDateTime now = ZonedDateTime.now(zone);
                 ZonedDateTime lastRequestZone = userSession.getLastRequest().atZone(zone);
@@ -453,6 +464,9 @@ public class TelegramBot implements SpringLongPollingBot, LongPollingSingleThrea
         }
 
         sendKeys(userId, chatId);
+        UserSessions userSessions = userSessionsRepository.findByUserId(userId).orElseThrow();
+        userSessions.setReceivedNewKeys(true);
+        userSessionsRepository.save(userSessions);
 
         new Timer().schedule(new TimerTask() {
             @Override
@@ -570,7 +584,7 @@ public class TelegramBot implements SpringLongPollingBot, LongPollingSingleThrea
 
     private String getTextByLanguage(Long userId, String messageKey, Object... args) {
         String language = userSessionsRepository.findByUserId(userId).orElseThrow().getLanguage();
-        Locale locale = new Locale(language ==null ? "ru" : language);
+        Locale locale = new Locale(language == null ? "ru" : language);
         return messageSource.getMessage(messageKey, args, locale);
     }
 
