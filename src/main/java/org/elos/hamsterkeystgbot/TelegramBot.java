@@ -91,11 +91,10 @@ public class TelegramBot implements SpringLongPollingBot, LongPollingSingleThrea
                     return;
                 }
             }
-
+            if (command.startsWith("/start")) {
+                handleStartCommand(update);
+            }
             switch (command) {
-                case "/start":
-                    handleStartCommand(update);
-                    break;
                 case "/get_keys":
                     handleGetKeysCommand(userId, chatId);
                     break;
