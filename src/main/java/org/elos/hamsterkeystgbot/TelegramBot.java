@@ -135,8 +135,7 @@ public class TelegramBot implements SpringLongPollingBot, LongPollingSingleThrea
                     ).build());
             try {
                 telegramClient.execute(sendMessage);
-                Thread.sleep(1500);
-            } catch (TelegramApiException | InterruptedException e) {
+            } catch (TelegramApiException e) {
                 throw new RuntimeException(e);
             }
 
@@ -417,6 +416,39 @@ public class TelegramBot implements SpringLongPollingBot, LongPollingSingleThrea
         }
 
         if (!canUserGetKeys(userId, chatId)) {
+
+            UserSessions userSession = userSessionsRepository.findByUserId(userId).orElseThrow();
+            if (userSession.getReceivedNewKeys() == null || !userSession.getReceivedNewKeys()) {
+                sendKeysByPrefix(userId, chatId, "TWERK");
+                userSession.setReceivedNewKeys(true);
+                userSessionsRepository.save(userSession);
+            } else  {
+                ZoneId zone = ZoneId.of("Europe/Moscow");
+                ZonedDateTime now = ZonedDateTime.now(zone);
+                ZonedDateTime lastRequestZone = userSession.getLastRequest().atZone(zone);
+                ZonedDateTime nextAvailableRequest = lastRequestZone.toLocalDate().plusDays(1).atStartOfDay(zone);
+
+                long hoursUntilNextRequest = ChronoUnit.HOURS.between(now, nextAvailableRequest);
+                long minutesUntilNextRequest = ChronoUnit.MINUTES.between(now, nextAvailableRequest) % 60;
+
+                String remainingTime;
+                String strhours = "";
+                String strmins = "";
+                if (userSession.getLanguage().equals("ru")) {
+                    strhours = "часов";
+                    strmins = "минут";
+                } else if (userSession.getLanguage().equals("en")) {
+                    strhours = "hours";
+                    strmins = "minutes";
+                }
+                if (hoursUntilNextRequest > 0) {
+                    remainingTime = String.format("%d %s %d %s", hoursUntilNextRequest, strhours, minutesUntilNextRequest, strmins);
+                } else {
+                    remainingTime = String.format("%d %s", minutesUntilNextRequest, strmins);
+                }
+
+                sendMessage(chatId, "remaining.time", remainingTime);
+            }
             return;
         }
 
@@ -428,6 +460,27 @@ public class TelegramBot implements SpringLongPollingBot, LongPollingSingleThrea
                 sendReferralLink(userId, chatId);
             }
         }, 30000); // 30 seconds
+    }
+
+    private void sendKeysByPrefix(Long userId, Long chatId, String prefix) {
+        StringBuilder keyBatch = new StringBuilder(getTextByLanguage(userId, "your.keys"));
+        List<Keys> keys = keysRepository.findTop4ByPrefix(prefix);
+        if (keys.size() < 4) {
+            sendMessage(chatId, "not.enough.keys.prefix", "<b>" + prefix + "</b>.");
+            return;
+        }
+        for (Keys key : keys) {
+            keyBatch.append("<code>").append(prefix).append("-").append(key.getKeyValue()).append("</code>").append("\n");
+        }
+        keyBatch.append("\n");
+        keysRepository.deleteAll(keys);
+        SendMessage sendMessage = new SendMessage(String.valueOf(chatId), keyBatch.toString());
+        sendMessage.setParseMode("HTML");
+        try {
+            telegramClient.execute(sendMessage);
+        } catch (TelegramApiException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     private boolean isUserSubscribed(Long userId) {
@@ -461,26 +514,6 @@ public class TelegramBot implements SpringLongPollingBot, LongPollingSingleThrea
             ZonedDateTime nextAvailableRequest = lastRequestZone.toLocalDate().plusDays(1).atStartOfDay(zone);
             ZonedDateTime now = ZonedDateTime.now(zone);
             if (now.isBefore(nextAvailableRequest)) {
-                long hoursUntilNextRequest = ChronoUnit.HOURS.between(now, nextAvailableRequest);
-                long minutesUntilNextRequest = ChronoUnit.MINUTES.between(now, nextAvailableRequest) % 60;
-
-                String remainingTime;
-                String strhours = "";
-                String strmins = "";
-                if (userSession.getLanguage().equals("ru")) {
-                    strhours = "часов";
-                    strmins = "минут";
-                } else if (userSession.getLanguage().equals("en")) {
-                    strhours = "hours";
-                    strmins = "minutes";
-                }
-                if (hoursUntilNextRequest > 0) {
-                    remainingTime = String.format("%d %s %d %s", hoursUntilNextRequest, strhours, minutesUntilNextRequest, strmins);
-                } else {
-                    remainingTime = String.format("%d %s", minutesUntilNextRequest, strmins);
-                }
-
-                sendMessage(chatId, "remaining.time", remainingTime);
                 return false;
             } else {
                 userSession.setLastRequest(ZonedDateTime.now(zone).toLocalDateTime());
@@ -494,8 +527,9 @@ public class TelegramBot implements SpringLongPollingBot, LongPollingSingleThrea
         return true;
     }
 
+
     private boolean areKeysAvailable() {
-        String[] prefixes = {"BIKE", "CUBE", "TRAIN", "CLONE", "MERGE"};
+        String[] prefixes = {"BIKE", "CUBE", "TRAIN", "CLONE", "MERGE", "TWERK"};
         for (String prefix : prefixes) {
             long count = keysRepository.countByPrefix(prefix);
             if (count < 4) {
@@ -506,7 +540,7 @@ public class TelegramBot implements SpringLongPollingBot, LongPollingSingleThrea
     }
 
     private void sendKeys(Long userId, Long chatId) {
-        String[] prefixes = {"BIKE", "CUBE", "TRAIN", "CLONE", "MERGE"};
+        String[] prefixes = {"BIKE", "CUBE", "TRAIN", "CLONE", "MERGE", "TWERK"};
         StringBuilder keyBatch = new StringBuilder(getTextByLanguage(userId, "your.keys"));
         for (String prefix : prefixes) {
             List<Keys> keys = keysRepository.findTop4ByPrefix(prefix);
@@ -536,7 +570,7 @@ public class TelegramBot implements SpringLongPollingBot, LongPollingSingleThrea
 
     private String getTextByLanguage(Long userId, String messageKey, Object... args) {
         String language = userSessionsRepository.findByUserId(userId).orElseThrow().getLanguage();
-        Locale locale = new Locale(language);
+        Locale locale = new Locale(language ==null ? "ru" : language);
         return messageSource.getMessage(messageKey, args, locale);
     }
 

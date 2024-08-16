@@ -23,6 +23,6 @@ public class UserSessions {
     private LocalDateTime lastRequest;
     private String language;
     private int bonusCount;
-    
+    private Boolean receivedNewKeys = false;
     // Getters and Setters
 }
