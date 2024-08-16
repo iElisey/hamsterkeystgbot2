@@ -507,7 +507,9 @@ public class TelegramBot implements SpringLongPollingBot, LongPollingSingleThrea
     private Message sendMessageByText(Long chatId, String text, InlineKeyboardMarkup... markup) {
         SendMessage sendMessage = new SendMessage(String.valueOf(chatId), text);
         sendMessage.setParseMode("HTML");
-        sendMessage.setReplyMarkup(markup[0]);
+        if (markup.length > 0) {
+            sendMessage.setReplyMarkup(markup[0]);
+        }
         try {
             return telegramClient.execute(sendMessage);
         } catch (TelegramApiException e) {
