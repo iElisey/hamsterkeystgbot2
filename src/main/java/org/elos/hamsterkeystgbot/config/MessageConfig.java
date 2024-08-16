@@ -12,9 +12,7 @@ public class MessageConfig {
         ReloadableResourceBundleMessageSource messageSource = new ReloadableResourceBundleMessageSource();
         messageSource.setBasename("classpath:messages");
         messageSource.setCacheSeconds(3600);
-        messageSource.setDefaultEncoding("UTF-8"); // Add this
-        System.out.println("ПРИЕТВ!");
-
+        messageSource.setDefaultEncoding("UTF-8");
         return messageSource;
     }
 }
