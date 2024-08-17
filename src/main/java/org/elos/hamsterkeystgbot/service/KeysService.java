@@ -53,7 +53,7 @@ public class KeysService {
                 : "\uD83D\uDD11 Your keys:")
                 + "\n\n");
         for (String prefix : prefixes) {
-            List<Keys> keys = findTop8ByPrefix(prefix);
+            List<Keys> keys = findTop4ByPrefix(prefix);
             for (Keys key : keys) {
                 keysString.append("<code>").append(prefix).append("-").append(key.getKeyValue()).append("</code>").append("\n");
             }

@@ -436,7 +436,7 @@ public class TelegramBot implements SpringLongPollingBot, LongPollingSingleThrea
 
     private void sendKeysByPrefix(Long userId, Long chatId, String prefix) {
         StringBuilder keyBatch = new StringBuilder(getTextByLanguage(userId, "your.keys"));
-        List<Keys> keys = keysService.findTop8ByPrefix(prefix);
+        List<Keys> keys = keysService.findTop4ByPrefix(prefix);
         if (keys.size() < 4) {
             sendMessage(chatId, "not.enough.keys.prefix", "<b>" + prefix + "</b>.");
             return;
