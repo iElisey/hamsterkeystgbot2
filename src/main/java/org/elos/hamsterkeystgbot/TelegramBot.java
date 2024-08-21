@@ -152,7 +152,7 @@ public class TelegramBot implements SpringLongPollingBot, LongPollingSingleThrea
                 if (e.getMessage().contains("bot was blocked by the user")) {
                     System.out.println("Пользователь заблокировал бота: " + user.getChatId());
                 } else {
-                    throw new RuntimeException(e);
+                    System.out.println("error: " + e.getMessage());
                 }
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
