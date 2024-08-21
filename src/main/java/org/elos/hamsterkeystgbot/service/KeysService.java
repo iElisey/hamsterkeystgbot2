@@ -11,7 +11,7 @@ import java.util.Objects;
 @Service
 public class KeysService {
     private final KeysRepository keysRepository;
-    private final String[] prefixes = {"BIKE", "CUBE", "TRAIN", "CLONE", "MERGE", "TWERK"};
+    private final String[] prefixes = {"BIKE", "CUBE", "TRAIN", "CLONE", "MERGE", "TWERK", "POLY"};
 
 
     public KeysService(KeysRepository keysRepository) {
