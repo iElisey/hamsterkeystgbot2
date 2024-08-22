@@ -5,6 +5,7 @@ import org.elos.hamsterkeystgbot.model.User;
 import org.elos.hamsterkeystgbot.repository.KeysRepository;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
@@ -46,6 +47,15 @@ public class KeysService {
         return true;
     }
 
+    public List<Keys> getKeys() {
+        List<Keys> keysAll = new ArrayList<>();
+        for (String prefix : prefixes) {
+            List<Keys> keys = findTop4ByPrefix(prefix);
+            keysAll.addAll(keys);
+            deleteAll(keys);
+        }
+        return keysAll;
+    }
 
     public String getKeys(User user) {
         StringBuilder keysString = new StringBuilder((Objects.equals(user.getLanguage(), "ru")
