@@ -411,7 +411,7 @@ public class TelegramBot implements SpringLongPollingBot, LongPollingSingleThrea
         if (!canUserGetKeys(userId, chatId)) {
             User user = userService.findByUserId(userId);
             if (user.getReceivedNewKeys() == null || !user.getReceivedNewKeys()) {
-                sendKeysByPrefix(userId, chatId, "POLY");
+                sendKeysByPrefix(userId, chatId, "RACE", "TRIM");
                 user.setReceivedNewKeys(true);
                 userService.save(user);
             } else {
@@ -434,15 +434,20 @@ public class TelegramBot implements SpringLongPollingBot, LongPollingSingleThrea
         }, randomMilliseconds); // 30 seconds
     }
 
-    private void sendKeysByPrefix(Long userId, Long chatId, String prefix) {
+    private void sendKeysByPrefix(Long userId, Long chatId, String... prefix) {
         StringBuilder keyBatch = new StringBuilder(getTextByLanguage(userId, "your.keys"));
-        List<Keys> keys = keysService.findTop4ByPrefix(prefix);
+        List<Keys> keys = keysService.findTop4ByPrefixes(prefix);
         if (keys.size() < 4) {
-            sendMessage(chatId, "not.enough.keys.prefix", "<b>" + prefix + "</b>.");
+            sendMessage(chatId, "not.enough.keys.prefix", "<b>" + Arrays.toString(prefix) + "</b>.");
             return;
         } else {
+            String lastPrefix = "";
             for (Keys key : keys) {
-                keyBatch.append("<code>").append(prefix).append("-").append(key.getKeyValue()).append("</code>").append("\n");
+                if (!lastPrefix.isEmpty() && !lastPrefix.equals(key.getPrefix())) {
+                    keyBatch.append("\n"); // Добавляем пустую строку при смене префикса
+                }
+                keyBatch.append("<code>").append(key.getPrefix()).append("-").append(key.getKeyValue()).append("</code>").append("\n");
+                lastPrefix = key.getPrefix();
             }
         }
         keyBatch.append("\n");

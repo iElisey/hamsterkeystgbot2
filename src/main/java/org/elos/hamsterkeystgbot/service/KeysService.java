@@ -12,7 +12,7 @@ import java.util.Objects;
 @Service
 public class KeysService {
     private final KeysRepository keysRepository;
-    private final String[] prefixes = {"BIKE", "CUBE", "TRAIN", "CLONE", "MERGE", "TWERK", "POLY"};
+    private final String[] prefixes = {"BIKE", "CUBE", "TRAIN", "CLONE", "MERGE", "TWERK", "POLY", "RACE", "TRIM"};
 
 
     public KeysService(KeysRepository keysRepository) {
@@ -24,8 +24,13 @@ public class KeysService {
         keysRepository.deleteAll(keys);
     }
 
-    public List<Keys> findTop4ByPrefix(String prefix) {
-        return keysRepository.findTop4ByPrefix(prefix);
+    public List<Keys> findTop4ByPrefixes(String... prefixes) {
+        List<Keys> keys = new ArrayList<>();
+        for (String prefix : prefixes) {
+            List<Keys> keysByPrefix = keysRepository.findTop4ByPrefix(prefix);
+            keys.addAll(keysByPrefix);
+        }
+        return keys;
     }
 
     public List<Keys> findTop8ByPrefix(String prefix) {
@@ -50,7 +55,7 @@ public class KeysService {
     public List<Keys> getKeys() {
         List<Keys> keysAll = new ArrayList<>();
         for (String prefix : prefixes) {
-            List<Keys> keys = findTop4ByPrefix(prefix);
+            List<Keys> keys = findTop4ByPrefixes(prefix);
             keysAll.addAll(keys);
             deleteAll(keys);
         }
@@ -63,7 +68,7 @@ public class KeysService {
                 : "\uD83D\uDD11 Your keys:")
                 + "\n\n");
         for (String prefix : prefixes) {
-            List<Keys> keys = findTop4ByPrefix(prefix);
+            List<Keys> keys = findTop4ByPrefixes(prefix);
             for (Keys key : keys) {
                 keysString.append("<code>").append(prefix).append("-").append(key.getKeyValue()).append("</code>").append("\n");
             }
