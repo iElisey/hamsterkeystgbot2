@@ -12,7 +12,7 @@ import java.util.Objects;
 @Service
 public class KeysService {
     private final KeysRepository keysRepository;
-    private final String[] prefixes = {"BIKE", "CUBE", "TRAIN", "CLONE", "MERGE", "TWERK", "POLY", "RACE", "TRIM"};
+    private final String[] prefixes = {"BIKE", "CUBE", "TRAIN", "MERGE", "TWERK", "POLY", "RACE", "TRIM"};
 
 
     public KeysService(KeysRepository keysRepository) {
