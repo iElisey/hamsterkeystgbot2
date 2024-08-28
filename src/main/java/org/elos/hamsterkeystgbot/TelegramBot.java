@@ -411,7 +411,7 @@ public class TelegramBot implements SpringLongPollingBot, LongPollingSingleThrea
         if (!canUserGetKeys(userId, chatId)) {
             User user = userService.findByUserId(userId);
             if (user.getReceivedNewKeys() == null || !user.getReceivedNewKeys()) {
-                sendKeysByPrefix(userId, chatId, "RACE", "TRIM");
+                sendKeysByPrefix(userId, chatId, "CAFE");
                 user.setReceivedNewKeys(true);
                 userService.save(user);
             } else {
