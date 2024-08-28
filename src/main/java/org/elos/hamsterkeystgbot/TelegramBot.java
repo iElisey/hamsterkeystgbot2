@@ -370,6 +370,7 @@ public class TelegramBot implements SpringLongPollingBot, LongPollingSingleThrea
         SendMessage sendMessage = new SendMessage(String.valueOf(referrerId), getTextByLanguage(referrerId, "invited.friend", referralName));
         sendMessage.setParseMode("HTML");
 
+
         InlineKeyboardMarkup referralMarkup = InlineKeyboardMarkup
                 .builder()
                 .keyboardRow(
