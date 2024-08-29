@@ -1,5 +1,6 @@
 package org.elos.hamsterkeystgbot;
 
+import org.elos.hamsterkeystgbot.config.GlobalLoggingExample;
 import org.elos.hamsterkeystgbot.config.KeyConfig;
 import org.elos.hamsterkeystgbot.service.KeysService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -12,11 +13,13 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.logging.Logger;
 
 @Component
 public class KeyGeneratorRunner implements CommandLineRunner {
 
     private final KeysService keyService;
+    private static final Logger logger = Logger.getLogger(KeyGeneratorRunner.class.getName());
 
     @Autowired
     public KeyGeneratorRunner(KeysService keyService) {
@@ -39,7 +42,8 @@ public class KeyGeneratorRunner implements CommandLineRunner {
             HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
 
             // Print the IP address
-            System.out.println("Your Public IP Address: " + response.body());
+            logger.info("Your Public IP Address: " + response.body());
+
         } catch (Exception e) {
             e.printStackTrace();
         }

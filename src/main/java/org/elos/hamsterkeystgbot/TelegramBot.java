@@ -1,5 +1,6 @@
 package org.elos.hamsterkeystgbot;
 
+import org.elos.hamsterkeystgbot.config.GlobalLoggingExample;
 import org.elos.hamsterkeystgbot.model.Keys;
 import org.elos.hamsterkeystgbot.model.User;
 import org.elos.hamsterkeystgbot.model.UserReferrals;
@@ -32,6 +33,7 @@ import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.*;
+import java.util.logging.Logger;
 
 @Component
 public class TelegramBot implements SpringLongPollingBot, LongPollingSingleThreadUpdateConsumer {
