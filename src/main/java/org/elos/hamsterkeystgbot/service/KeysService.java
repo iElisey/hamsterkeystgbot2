@@ -53,7 +53,7 @@ public class KeysService {
                 for (int i = 0; i < 20; i++) {
                     futures.add(executorService.submit(() -> login(proxy, appToken, promoId, keyDetails.getTimeout())));
                     try {
-                        Thread.sleep(1000);
+                        Thread.sleep(5000);
                     } catch (InterruptedException e) {
                         throw new RuntimeException(e);
                     }
@@ -84,6 +84,11 @@ public class KeysService {
 
             proxyThreads.add(proxyThread);
             proxyThread.start();
+            try {
+                Thread.sleep(500);
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
         }
 
         // Wait for all proxy threads to finish
