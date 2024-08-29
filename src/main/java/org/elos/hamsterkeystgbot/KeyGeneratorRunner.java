@@ -42,7 +42,7 @@ public class KeyGeneratorRunner implements CommandLineRunner {
             HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
 
             // Print the IP address
-            logger.info("Your Public IP Address: " + response.body());
+            logger.warning("Your Public IP Address: " + response.body());
 
         } catch (Exception e) {
             e.printStackTrace();

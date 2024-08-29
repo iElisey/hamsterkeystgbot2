@@ -38,7 +38,7 @@ public class KeysService {
             Thread.currentThread().interrupt();
             System.out.println("Thread was interrupted, failed to complete initialization");
         }
-        List<String> proxies = readProxiesFromFile("src/main/resources/proxies.txt");
+        List<String> proxies = readProxiesFromFile("/proxies.txt");
         List<Thread> proxyThreads = new ArrayList<>();
         AtomicInteger amountOfPromo = new AtomicInteger();
 
