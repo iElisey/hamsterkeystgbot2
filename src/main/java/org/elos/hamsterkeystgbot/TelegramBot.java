@@ -44,6 +44,9 @@ public class TelegramBot implements SpringLongPollingBot, LongPollingSingleThrea
     private final KeysService keysService;
     private final UserReferralsRepository userReferralsRepository;
 
+
+
+
     @Autowired
     public TelegramBot(MessageSource messageSource,
                        UserService userService,

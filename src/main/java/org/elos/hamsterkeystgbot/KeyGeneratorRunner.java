@@ -21,10 +21,13 @@ public class KeyGeneratorRunner implements CommandLineRunner {
 
     @Override
     public void run(String... args) throws Exception {
-        String initialPrefix = "MERGE";
-        while (true) {
-            keyService.generateAndStoreKeys(initialPrefix);
-            initialPrefix = getNextPrefix(initialPrefix); // Implement logic to get the next prefix
+        String enableKeyGeneration = System.getenv("ENABLE_KEY_GENERATION");
+        if ("true".equalsIgnoreCase(enableKeyGeneration)) {
+            String initialPrefix = "MERGE";
+            while (true) {
+                keyService.generateAndStoreKeys(initialPrefix);
+                initialPrefix = getNextPrefix(initialPrefix); // Implement logic to get the next prefix
+            }
         }
     }
 
