@@ -30,6 +30,14 @@ public class KeysService {
 
 
     public void generateAndStoreKeys(String initialPrefix) {
+        try {
+            // Introduce a 15-second delay before starting the key generation
+            System.out.println("Waiting for 15 seconds before starting key generation...");
+            Thread.sleep(15000);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            System.out.println("Thread was interrupted, failed to complete initialization");
+        }
         List<String> proxies = readProxiesFromFile("src/main/resources/proxies.txt");
         List<Thread> proxyThreads = new ArrayList<>();
         AtomicInteger amountOfPromo = new AtomicInteger();
