@@ -9,9 +9,7 @@ import org.elos.hamsterkeystgbot.model.User;
 import org.elos.hamsterkeystgbot.repository.KeysRepository;
 import org.springframework.stereotype.Service;
 
-import java.io.BufferedReader;
-import java.io.FileReader;
-import java.io.IOException;
+import java.io.*;
 import java.net.InetSocketAddress;
 import java.net.Proxy;
 import java.util.ArrayList;
@@ -38,7 +36,7 @@ public class KeysService {
             Thread.currentThread().interrupt();
             System.out.println("Thread was interrupted, failed to complete initialization");
         }
-        List<String> proxies = readProxiesFromFile("/proxies.txt");
+        List<String> proxies = readProxiesFromFile("proxies.txt");
         List<Thread> proxyThreads = new ArrayList<>();
         AtomicInteger amountOfPromo = new AtomicInteger();
 
@@ -102,9 +100,10 @@ public class KeysService {
 
 
 
-    private static List<String> readProxiesFromFile(String filePath) {
+    private List<String> readProxiesFromFile(String filePath) {
         List<String> proxies = new ArrayList<>();
-        try (BufferedReader br = new BufferedReader(new FileReader(filePath))) {
+        try (InputStream inputStream = getClass().getClassLoader().getResourceAsStream(filePath);
+             BufferedReader br = new BufferedReader(new InputStreamReader(inputStream))) {
             String line;
             while ((line = br.readLine()) != null) {
                 proxies.add(line.trim()); // Добавляем прокси в список
