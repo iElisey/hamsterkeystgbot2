@@ -43,14 +43,14 @@ public class KeysService {
         for (String proxy : proxies) {
             Thread proxyThread = new Thread(() -> {
                 // Create a fixed thread pool with 20 threads
-                ExecutorService executorService = Executors.newFixedThreadPool(20);
+                ExecutorService executorService = Executors.newFixedThreadPool(5);
                 List<Future<String>> futures = new ArrayList<>();
                 KeyConfig.KeyDetails keyDetails = KeyConfig.getKeyDetails(initialPrefix);
                 String appToken = keyDetails.getAppToken();
                 String promoId = keyDetails.getPromoId();
 
                 // Submit 20 login tasks in parallel
-                for (int i = 0; i < 20; i++) {
+                for (int i = 0; i < 5; i++) {
                     futures.add(executorService.submit(() -> login(proxy, appToken, promoId, keyDetails.getTimeout())));
                     try {
                         Thread.sleep(5000);
@@ -85,7 +85,7 @@ public class KeysService {
             proxyThreads.add(proxyThread);
             proxyThread.start();
             try {
-                Thread.sleep(500);
+                Thread.sleep(1500);
             } catch (InterruptedException e) {
                 throw new RuntimeException(e);
             }

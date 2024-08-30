@@ -33,6 +33,8 @@ import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.*;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.logging.Logger;
 
 @Component
@@ -119,7 +121,7 @@ public class TelegramBot implements SpringLongPollingBot, LongPollingSingleThrea
                     break;
                 case "/broadcast":
                     if (userId == adminId) {
-                        handleBroadcastMessage(userId);
+                        handleBroadcastMessageAsync(userId);
                     }
                     break;
             }
@@ -134,6 +136,13 @@ public class TelegramBot implements SpringLongPollingBot, LongPollingSingleThrea
         int invitedFriends = userReferralsRepository.findByReferrerId(userId).size();
         sendMessage(chatId, "referral", invitedFriends, referralURL + userId);
     }
+
+    private final ExecutorService executorService = Executors.newSingleThreadExecutor();
+
+    public void handleBroadcastMessageAsync(Long userId) {
+        executorService.submit(() -> handleBroadcastMessage(userId));
+    }
+
 
     private void handleBroadcastMessage(Long userId) {
         List<User> all = userService.findAll();
