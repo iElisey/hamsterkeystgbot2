@@ -24,7 +24,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 @Service
 public class KeysService {
     private final KeysRepository keysRepository;
-    private final String[] prefixes = {"BIKE", "CUBE", "TRAIN", "MERGE", "TWERK", "POLY", "RACE", "TRIM", "CAFE"};
+    private final String[] prefixes = {"CUBE", "TRAIN", "MERGE", "TWERK", "POLY", "TRIM", "CAFE", "ZOO", "GANGS"};
 
 
     public void generateAndStoreKeys(String initialPrefix) {
