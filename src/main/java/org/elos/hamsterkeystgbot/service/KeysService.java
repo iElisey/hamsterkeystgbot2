@@ -24,7 +24,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 @Service
 public class KeysService {
     private final KeysRepository keysRepository;
-    private final String[] prefixes = {"CUBE", "TRAIN", "MERGE", "TWERK", "POLY", "TRIM", "ZOO"};
+    private final String[] prefixes = {"CUBE", "TRAIN", "MERGE", "TWERK", "POLY", "TRIM", "ZOO", "TILE","FLUF"};
 
 
     public void generateAndStoreKeys(String initialPrefix) {
@@ -299,7 +299,12 @@ public class KeysService {
     public List<Keys> findTop4ByPrefixes(String... prefixes) {
         List<Keys> keys = new ArrayList<>();
         for (String prefix : prefixes) {
-            List<Keys> keysByPrefix = keysRepository.findTop4ByPrefix(prefix);
+            List<Keys> keysByPrefix;
+            if (prefix.equalsIgnoreCase("FLUF")) {
+                keysByPrefix = keysRepository.findTop8ByPrefix(prefix);
+            } else {
+                keysByPrefix = keysRepository.findTop4ByPrefix(prefix);
+            }
             keys.addAll(keysByPrefix);
         }
         return keys;
@@ -327,7 +332,13 @@ public class KeysService {
     public List<Keys> getKeys() {
         List<Keys> keysAll = new ArrayList<>();
         for (String prefix : prefixes) {
-            List<Keys> keys = findTop4ByPrefixes(prefix);
+            List<Keys> keys;
+            if (prefix.equalsIgnoreCase("FLUF")) {
+                keys = findTop8ByPrefix(prefix);
+            } else {
+                keys = findTop4ByPrefixes(prefix);
+            }
+
             keysAll.addAll(keys);
             deleteAll(keys);
         }
@@ -340,7 +351,17 @@ public class KeysService {
                 : "\uD83D\uDD11 Your keys:")
                 + "\n\n");
         for (String prefix : prefixes) {
-            List<Keys> keys = findTop4ByPrefixes(prefix);
+            List<Keys> keys;
+            if (prefix.equalsIgnoreCase("FLUF")) {
+                keysString.append("\n\n"+(Objects.equals(user.getLanguage(), "ru")
+                        ? "\uD83E\uDE99 Ваши монетки:"
+                        : "\uD83E\uDE99 Your coins:")
+                        + "\n");
+                keys = findTop8ByPrefix(prefix);
+            } else {
+                keys = findTop4ByPrefixes(prefix);
+            }
+
             for (Keys key : keys) {
                 keysString.append("<code>").append(prefix).append("-").append(key.getKeyValue()).append("</code>").append("\n");
             }
