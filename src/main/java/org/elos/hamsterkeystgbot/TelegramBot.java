@@ -160,11 +160,13 @@ public class TelegramBot implements SpringLongPollingBot, LongPollingSingleThrea
             try {
                 sendMessageByMessageKey(user.getChatId(), "broadcast.message", markup);
                 System.out.println("Success! " + user.getChatId());
-                Thread.sleep(500);
+                Thread.sleep(20);
             } catch (TelegramApiException e) {
                 // Если бот заблокирован пользователем, логируем и продолжаем выполнение цикла
                 if (e.getMessage().contains("bot was blocked by the user")) {
-                    System.out.println("Пользователь заблокировал бота: " + user.getChatId());
+                    String text = "❌ <b>User <i>"+user.getChatId()+"</i> blocked the bot</b>";
+                    System.out.println(text);
+                    sendMessageByText(userId, text);
                 } else {
                     System.out.println("error: " + e.getMessage());
                 }
@@ -426,7 +428,7 @@ public class TelegramBot implements SpringLongPollingBot, LongPollingSingleThrea
         if (!canUserGetKeys(userId, chatId)) {
             User user = userService.findByUserId(userId);
             if (user.getReceivedNewKeys() == null || !user.getReceivedNewKeys()) {
-                sendKeysByPrefix(userId, chatId, "TILE", "FLUF");
+                sendKeysByPrefix(userId, chatId, "STONE");
                 user.setReceivedNewKeys(true);
                 userService.save(user);
             } else {
