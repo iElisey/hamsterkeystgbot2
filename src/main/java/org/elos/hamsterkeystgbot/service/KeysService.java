@@ -22,7 +22,8 @@ import java.util.stream.Collectors;
 @Service
 public class KeysService {
     private final KeysRepository keysRepository;
-    private final String[] prefixes = {"CUBE", "TRAIN", "MERGE", "TWERK", "POLY", "TRIM", "ZOO", "TILE","STONE","FLUF"};
+    private final String[] prefixes = {"CUBE", "TRAIN", "MERGE", "TWERK", "POLY", "TRIM", "ZOO", "TILE", "STONE", "FLUF"};
+    public static long lastAmountOfKeys = 0;
 
 
     public void generateAndStoreKeys(String initialPrefix) {
@@ -100,7 +101,6 @@ public class KeysService {
 
         System.out.println("Total promo codes generated: " + amountOfPromo);
     }
-
 
 
     private List<String> readProxiesFromFile(String filePath) {
@@ -268,7 +268,7 @@ public class KeysService {
                 return false;
             }
         } catch (Exception e) {
-            System.out.println("Error2: "+e.getMessage());
+            System.out.println("Error2: " + e.getMessage());
             return false;
         }
     }
@@ -351,7 +351,7 @@ public class KeysService {
         for (String prefix : prefixes) {
             List<Keys> keys;
             if (prefix.equalsIgnoreCase("FLUF")) {
-                keysString.append("\n\n"+(Objects.equals(user.getLanguage(), "ru")
+                keysString.append("\n\n" + (Objects.equals(user.getLanguage(), "ru")
                         ? "\uD83E\uDE99 Ваши монетки:"
                         : "\uD83E\uDE99 Your coins:")
                         + "\n");
@@ -378,13 +378,16 @@ public class KeysService {
                 .mapToLong(row -> (Long) row[1])
                 .sum();
 
-
         keysAmount.append("<b>Total number of keys:</b> ")
                 .append(totalKeysCount)
+                .append("\n")
+                .append("<i>+").append(totalKeysCount - lastAmountOfKeys).append("</i>")
                 .append("\n\n");
 
-        results.forEach(row->{
-            keysAmount.append("<b>"+row[0]+"</b>").append(": ").append(row[1]).append("\n");
+        lastAmountOfKeys = totalKeysCount;
+
+        results.forEach(row -> {
+            keysAmount.append("<b>" + row[0] + "</b>").append(": ").append(row[1]).append("\n");
         });
         return keysAmount.toString();
     }
