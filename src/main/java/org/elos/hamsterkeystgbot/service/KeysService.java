@@ -12,14 +12,12 @@ import org.springframework.stereotype.Service;
 import java.io.*;
 import java.net.InetSocketAddress;
 import java.net.Proxy;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Objects;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
 
 @Service
 public class KeysService {
@@ -369,5 +367,29 @@ public class KeysService {
             deleteAll(keys);
         }
         return keysString.toString();
+    }
+
+    public String getKeysAmount() {
+        StringBuilder keysAmount = new StringBuilder();
+        List<Keys> keysList = keysRepository.findAll();
+        keysAmount.append("<b>Total number of keys:</b> ")
+                .append(keysList.size())
+                .append("\n\n");
+        Map<String, Long> keysByPrefix = keysList.stream()
+                .collect(Collectors.groupingBy(Keys::getPrefix, Collectors.counting()))
+                .entrySet().stream()
+                .sorted((e1, e2) -> Long.compare(e2.getValue(), e1.getValue())) // сортировка по значению
+                .collect(Collectors.toMap(
+                        Map.Entry::getKey,
+                        Map.Entry::getValue,
+                        (e1, e2) -> e1, // на случай конфликтов, оставляем первое значение
+                        LinkedHashMap::new)); // используем LinkedHashMap для сохранения порядка
+
+        keysByPrefix.forEach((prefix, count)->{
+            keysAmount.append(prefix)
+                    .append(": ")
+                    .append(count);
+        });
+        return keysAmount.toString();
     }
 }

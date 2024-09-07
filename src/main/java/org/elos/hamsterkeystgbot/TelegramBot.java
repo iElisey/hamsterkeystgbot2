@@ -42,6 +42,7 @@ public class TelegramBot implements SpringLongPollingBot, LongPollingSingleThrea
 
     public static final String referralURL = "https://t.me/hamster_komb_keys_bot?start=";
     public static long adminId = 975340794;
+    public static boolean broadcastMessageSended = false;
 
     private final MessageSource messageSource;
     private final UserService userService;
@@ -119,17 +120,36 @@ public class TelegramBot implements SpringLongPollingBot, LongPollingSingleThrea
                         handleStartCommand(update);
                     }
                     break;
-                case "/broadcast":
-                    if (userId == adminId) {
-                        handleBroadcastMessageAsync(userId);
-                    }
-                    break;
+
+            }
+            if (userId == adminId) {
+                switch(command) {
+                    case "/broadcast":
+                        if (broadcastMessageSended) {
+                            sendMessageByText(userId, "<b>\uD83D\uDEA8 Broadcast message have already sent.</b>\nWrite a command /again_broadcast for broadcast recovery.");
+                        } else {
+                            handleBroadcastMessageAsync(userId);
+                        }
+                        break;
+                    case "/again_broadcast":
+                        broadcastMessageSended = false;
+                        sendMessageByText(userId, "<b>✅ Broadcast message restored.");
+                        break;
+                    case "/amount_of_keys":
+                        handleAmountOfKeys(userId);
+                        break;
+                }
             }
 
 
         } else if (update.hasCallbackQuery()) {
             handleCallbackQuery(update.getCallbackQuery());
         }
+    }
+
+    private void handleAmountOfKeys(Long userId) {
+       String amount = keysService.getKeysAmount();
+       sendMessageByText(userId, amount);
     }
 
     private void handleReferrals(Long userId, Long chatId) {
@@ -146,6 +166,7 @@ public class TelegramBot implements SpringLongPollingBot, LongPollingSingleThrea
 
     private void handleBroadcastMessage(Long userId) {
         List<User> all = userService.findAll();
+        int blockedUsers = 0;
         for (User user : all) {
             InlineKeyboardMarkup markup = InlineKeyboardMarkup.builder()
                     .keyboardRow(new InlineKeyboardRow(
@@ -160,23 +181,21 @@ public class TelegramBot implements SpringLongPollingBot, LongPollingSingleThrea
             try {
                 sendMessageByMessageKey(user.getChatId(), "broadcast.message", markup);
                 System.out.println("Success! " + user.getChatId());
-                Thread.sleep(20);
             } catch (TelegramApiException e) {
                 // Если бот заблокирован пользователем, логируем и продолжаем выполнение цикла
                 if (e.getMessage().contains("bot was blocked by the user")) {
-                    String text = "❌ <b>User <i>"+user.getChatId()+"</i> blocked the bot</b>";
-                    System.out.println(text);
-                    sendMessageByText(userId, text);
+                    blockedUsers++;
+//                    String text = "❌ <b>User <i>"+user.getChatId()+"</i> blocked the bot</b>";
+//                    System.out.println(text);
+//                    sendMessageByText(userId, text);
                 } else {
                     System.out.println("error: " + e.getMessage());
                 }
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                throw new RuntimeException("Ошибка при ожидании отправки сообщения", e);
             }
 
         }
-        sendMessageByText(userId, "✅ <b>Broadcast message sent to all users.</b>");
+        broadcastMessageSended = true;
+        sendMessageByText(userId, "✅ <b>Broadcast message sent to all users.</b>\n❌ Users who blocked the bot: <i>" + blockedUsers+"</i>");
     }
 
     private void handleChangeLanguageCommand(Long userId, Long chatId) {
