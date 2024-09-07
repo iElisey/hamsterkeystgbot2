@@ -371,24 +371,20 @@ public class KeysService {
 
     public String getKeysAmount() {
         StringBuilder keysAmount = new StringBuilder();
-        List<Keys> keysList = keysRepository.findAll();
-        keysAmount.append("<b>Total number of keys:</b> ")
-                .append(keysList.size())
-                .append("\n\n");
-        Map<String, Long> keysByPrefix = keysList.stream()
-                .collect(Collectors.groupingBy(Keys::getPrefix, Collectors.counting()))
-                .entrySet().stream()
-                .sorted((e1, e2) -> Long.compare(e2.getValue(), e1.getValue())) // сортировка по значению
-                .collect(Collectors.toMap(
-                        Map.Entry::getKey,
-                        Map.Entry::getValue,
-                        (e1, e2) -> e1, // на случай конфликтов, оставляем первое значение
-                        LinkedHashMap::new)); // используем LinkedHashMap для сохранения порядка
 
-        keysByPrefix.forEach((prefix, count)->{
-            keysAmount.append(prefix)
-                    .append(": ")
-                    .append(count);
+        List<Object[]> results = keysRepository.countKeysByPrefix();
+
+        long totalKeysCount = results.stream()
+                .mapToLong(row -> (Long) row[1])
+                .sum();
+
+
+        keysAmount.append("<b>Total number of keys:</b> ")
+                .append(totalKeysCount)
+                .append("\n\n");
+
+        results.forEach(row->{
+            keysAmount.append(row[0]).append(": ").append(row[1]);
         });
         return keysAmount.toString();
     }
