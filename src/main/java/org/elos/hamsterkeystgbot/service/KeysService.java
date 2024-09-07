@@ -384,7 +384,7 @@ public class KeysService {
                 .append("\n\n");
 
         results.forEach(row->{
-            keysAmount.append(row[0]).append(": ").append(row[1]);
+            keysAmount.append("<b>"+row[0]+"</b>").append(": ").append(row[1]).append("\n");
         });
         return keysAmount.toString();
     }
