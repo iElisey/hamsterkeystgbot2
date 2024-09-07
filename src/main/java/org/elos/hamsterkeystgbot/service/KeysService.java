@@ -9,15 +9,20 @@ import org.elos.hamsterkeystgbot.model.User;
 import org.elos.hamsterkeystgbot.repository.KeysRepository;
 import org.springframework.stereotype.Service;
 
-import java.io.*;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.net.InetSocketAddress;
 import java.net.Proxy;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Objects;
+import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.stream.Collectors;
 
 @Service
 public class KeysService {
@@ -378,10 +383,21 @@ public class KeysService {
                 .mapToLong(row -> (Long) row[1])
                 .sum();
 
-        keysAmount.append("<b>Total number of keys:</b> ")
+        long minusKeys = totalKeysCount - lastAmountOfKeys;
+        String symbol = "";
+
+        if (minusKeys > 0) {
+            symbol = "+";
+        } else if (minusKeys < 0) {
+            symbol = "-";
+        } else {
+            symbol = ""; // Если разница равна 0, символ не нужен
+        }
+
+        keysAmount.append("\uD83D\uDD22 <b>Total number of keys:</b> ")
                 .append(totalKeysCount)
                 .append("\n")
-                .append("<i>+").append(totalKeysCount - lastAmountOfKeys).append("</i>")
+                .append("<i>").append(symbol).append(Math.abs(minusKeys)).append("</i>")
                 .append("\n\n");
 
         lastAmountOfKeys = totalKeysCount;
