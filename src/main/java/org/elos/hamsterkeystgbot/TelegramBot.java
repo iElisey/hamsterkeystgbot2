@@ -41,6 +41,7 @@ public class TelegramBot implements SpringLongPollingBot, LongPollingSingleThrea
     public static final String referralURL = "https://t.me/hamster_komb_keys_bot?start=";
     public static long adminId = 975340794;
     public static boolean broadcastMessageSended = false;
+    public static boolean receivedNewKeys = false;
 
     private final MessageSource messageSource;
     private final UserService userService;
@@ -136,6 +137,9 @@ public class TelegramBot implements SpringLongPollingBot, LongPollingSingleThrea
                     case "/amount_of_keys":
                         handleAmountOfKeys(userId);
                         break;
+                    case "/set_received_new_keys":
+                        handleReceivedNewKeys(userId);
+                        break;
                 }
             }
 
@@ -143,6 +147,18 @@ public class TelegramBot implements SpringLongPollingBot, LongPollingSingleThrea
         } else if (update.hasCallbackQuery()) {
             handleCallbackQuery(update.getCallbackQuery());
         }
+    }
+
+    private void handleReceivedNewKeys(Long userId) {
+        String text;
+        if (receivedNewKeys) {
+            text = "<b>❗\uFE0FYou have already set received new keys!</b>";
+        } else {
+            text = "✅ Received new keys is set to <b>false</b>!";
+            receivedNewKeys = true;
+            userService.setReceivedNewKeys();
+        }
+        sendMessageByText(userId, text);
     }
 
     private void handleAmountOfKeys(Long userId) {
@@ -445,7 +461,7 @@ public class TelegramBot implements SpringLongPollingBot, LongPollingSingleThrea
         if (!canUserGetKeys(userId, chatId)) {
             User user = userService.findByUserId(userId);
             if (user.getReceivedNewKeys() == null || !user.getReceivedNewKeys()) {
-                sendKeysByPrefix(userId, chatId, "BOUNC");
+                sendKeysByPrefix(userId, chatId, "HIDE");
                 user.setReceivedNewKeys(true);
                 userService.save(user);
             } else {
